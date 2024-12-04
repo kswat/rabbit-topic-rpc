@@ -17,6 +17,7 @@ public class Config {
 
     public static final String RPC_EXCHANGE = "rpc.topic.exchange";
     public static final String RPC_REQUEST_QUEUE = "rpc.request.queue";
+    public static final String RPC_REQUEST_KEY = "rpc.request.queue";
     public static final String RPC_REPLY_QUEUE = "rpc.reply.queue";
 
     @Bean
@@ -30,13 +31,19 @@ public class Config {
     }
 
     @Bean
-    public Queue replyQueue() {
+    public static Queue replyQueue() {
         return new Queue(RPC_REPLY_QUEUE);
     }
 
     @Bean
+//    @Profile("client")
     public Binding requestBinding(Queue requestQueue, TopicExchange rpcExchange) {
-        return BindingBuilder.bind(requestQueue).to(rpcExchange).with("rpc.request.#");
+        return BindingBuilder.bind(requestQueue).to(rpcExchange).with(RPC_REQUEST_KEY);
+    }
+
+    @Bean
+    public Binding responseBinding(TopicExchange rpcExchange, Queue replyQueue) {
+        return BindingBuilder.bind(replyQueue).to(rpcExchange).with(RPC_REPLY_QUEUE);
     }
 
     @Profile("client")
@@ -44,8 +51,8 @@ public class Config {
         @Bean
         RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
             RabbitTemplate template = new RabbitTemplate(connectionFactory);
-            template.setReplyAddress(RPC_REPLY_QUEUE);
-            template.setReplyTimeout(6000);
+            template.setReplyAddress(replyQueue().getName());
+//            template.setReplyTimeout(10000);
             template.setMessageConverter(new SimpleMessageConverter()); //Change 1 for NumberFormatException
             return template;
         }
@@ -54,9 +61,35 @@ public class Config {
         SimpleMessageListenerContainer replyContainer(ConnectionFactory connectionFactory, RabbitTemplate rabbitTemplate) {
             SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
             container.setConnectionFactory(connectionFactory);
-            container.setQueueNames(RPC_REPLY_QUEUE);
+            container.setQueues(replyQueue());
             container.setMessageListener(rabbitTemplate);
             return container;
         }
+
+//        @Bean
+//        public RabbitTemplate amqpTemplate(ConnectionFactory connectionFactory) {
+//            RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+////            rabbitTemplate.setMessageConverter(msgConv());
+//            rabbitTemplate.setMessageConverter(new SimpleMessageConverter()); //Change 1 for NumberFormatException
+//            rabbitTemplate.setReplyAddress(replyQueue().getName());
+//            rabbitTemplate.setReplyTimeout(60000);
+//            rabbitTemplate.setUseDirectReplyToContainer(false);
+//            return rabbitTemplate;
+//        }
+//
+//        @Bean
+//        public SimpleMessageListenerContainer replyListenerContainer(ConnectionFactory connectionFactory) {
+//            SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
+//            container.setConnectionFactory(connectionFactory);
+//            container.setQueues(replyQueue());
+//            container.setMessageListener(amqpTemplate(connectionFactory));
+//            return container;
+//        }
+
+//        @Bean
+//        public Queue replyQueue() {
+//            return new Queue(RPC_REPLY_QUEUE);
+//        }
+
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
+import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -19,8 +20,35 @@ public class MyBackend {
     @Autowired
     private RabbitTemplate rabbitTemplate;
 
+//    @RabbitListener(queues = RPC_REQUEST_QUEUE, concurrency = "2")
+//    @SendTo(RPC_EXCHANGE + '/' + RPC_REPLY_QUEUE)
+//    public void processRequest(Message message) {
+//        String body = new String(message.getBody(), StandardCharsets.UTF_8);
+//        int number = Integer.parseInt(body);
+//
+//        System.out.println(message);
+//
+//        System.out.println("[Server] Received request: " + number);
+//
+//        int result = fibonacci(number);
+//        System.out.println("[Server] Computed result: " + result);
+//
+//        // Send response
+//        rabbitTemplate.convertAndSend(
+//                RPC_EXCHANGE,
+//                RPC_REPLY_QUEUE,
+//                String.valueOf(result),
+//                msg -> {
+//                    final String correlationId = message.getMessageProperties().getCorrelationId();
+//                    System.out.println("correlationId : "+ correlationId);
+//                    msg.getMessageProperties().setCorrelationId(correlationId);
+//                    return msg;
+//                }
+//        );
+//    }
     @RabbitListener(queues = RPC_REQUEST_QUEUE, concurrency = "2")
-    public void processRequest(Message message) {
+    @SendTo(RPC_EXCHANGE + '/' + RPC_REPLY_QUEUE)
+    public int processRequest(Message message) {
         String body = new String(message.getBody(), StandardCharsets.UTF_8);
         int number = Integer.parseInt(body);
 
@@ -31,20 +59,8 @@ public class MyBackend {
         int result = fibonacci(number);
         System.out.println("[Server] Computed result: " + result);
 
-        // Send response
-        rabbitTemplate.convertAndSend(
-                RPC_EXCHANGE,
-                RPC_REPLY_QUEUE,
-                String.valueOf(result),
-                msg -> {
-                    final String correlationId = message.getMessageProperties().getCorrelationId();
-                    System.out.println("correlationId : "+ correlationId);
-                    msg.getMessageProperties().setCorrelationId(correlationId);
-                    return msg;
-                }
-        );
+        return result;
     }
-
     private int fibonacci(int n) {
         if (n == 0) return 0;
         if (n == 1) return 1;
